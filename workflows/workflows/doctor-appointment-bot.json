@@ -1,0 +1,180 @@
+{
+  "name": "Doctor Appointment Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Gather input=\"speech\" language=\"hi-IN\" speechTimeout=\"6\" speechModel=\"phone_call\" enhanced=\"true\" actionOnEmptyResult=\"true\" action=\"https://tannish13.app.n8n.cloud/webhook/gather\" method=\"POST\"><Play>{{ $json.audioUrl }}</Play></Gather><Say language=\"hi-IN\">क्षमा करें, मुझे आपकी बात सुनाई नहीं दी। कृपया दोबारा कॉल करें।</Say></Response>",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/xml"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        528,
+        0
+      ],
+      "id": "dc67e988-2b47-4649-86de-0fd9cf3a08c0",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "doctor-bot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        0
+      ],
+      "id": "bf2a2498-2d97-45d1-a5f7-9876a5b81f63",
+      "name": "Webhook",
+      "webhookId": "540ec43a-b1c6-4a7b-af42-e32a5b950f9d"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sarvam.ai/text-to-speech",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-subscription-key",
+              "value": "sk_cr6fs2d9_uF0t5SnOULBBb0quXBeUBZ12"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"inputs\": [\"Namaste! Main Dr. Sharma ke clinic ki taraf se bol rahi hoon. Aapki appointment book karne ke liye apna naam batayein.\"],\n  \"target_language_code\": \"hi-IN\",\n  \"speaker\": \"anushka\",\n  \"pitch\": 0,\n  \"pace\": 1.0,\n  \"loudness\": 1.5,\n  \"speech_sample_rate\": 8000,\n  \"enable_preprocessing\": true,\n  \"model\": \"bulbul:v2\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        192,
+        0
+      ],
+      "id": "6e99f4cc-4795-42cc-95b9-e19914a152a3",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base64Audio = $('HTTP Request').first().json.audios[0];\n\nconst token = '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';\nconst username = 'tanishsaini626-prog';\nconst repo = 'doctor-bot-audio';\nconst filename = 'greeting.wav';\n\n// First check if file exists to get SHA\nlet sha = undefined;\ntry {\n  const checkFile = await this.helpers.httpRequest({\n    method: 'GET',\n    url: `https://api.github.com/repos/${username}/${repo}/contents/${filename}`,\n    headers: {\n      'Authorization': `token ${token}`,\n      'User-Agent': 'n8n'\n    }\n  });\n  sha = checkFile.sha;\n} catch(e) {\n  // File doesn't exist yet, sha stays undefined\n}\n\nconst body = {\n  message: 'Update audio',\n  content: base64Audio\n};\nif (sha) body.sha = sha;\n\nawait this.helpers.httpRequest({\n  method: 'PUT',\n  url: `https://api.github.com/repos/${username}/${repo}/contents/${filename}`,\n  headers: {\n    'Authorization': `token ${token}`,\n    'Content-Type': 'application/json',\n    'User-Agent': 'n8n'\n  },\n  body: body,\n  json: true\n});\n\nconst audioUrl = `https://cdn.jsdelivr.net/gh/${username}/${repo}@main/${filename}`;\nreturn [{ json: { audioUrl: audioUrl } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        0
+      ],
+      "id": "3ef12f37-3459-4fd1-9345-1a7498fe916e",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "tannish13.app.n8n.cloud",
+            "user-agent": "curl/8.9.1",
+            "content-length": "70",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "2a09:bac5:3ae8:1a96::2a6:1e",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "IN",
+            "cf-ray": "9f027e52d78c548a-DEL",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/x-www-form-urlencoded",
+            "x-forwarded-for": "2a09:bac5:3ae8:1a96::2a6:1e, 172.69.203.183",
+            "x-forwarded-host": "tannish13.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-85-64c686fc96-jcv6z",
+            "x-is-trusted": "yes",
+            "x-real-ip": "2a09:bac5:3ae8:1a96::2a6:1e"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "CallSid": "CA123",
+            "From": "+16063570297",
+            "To": "+16063570297",
+            "CallStatus": "ringing"
+          },
+          "webhookUrl": "https://tannish13.app.n8n.cloud/webhook/doctor-bot",
+          "executionMode": "production"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5f286e13-e377-43d1-8830-8ea22ca68268",
+  "meta": {
+    "instanceId": "5f9cfea5765b097dd2a9de6ff90fcd4908fc0f6c79a93c5dd7a471f7637b8129"
+  },
+  "id": "8VMqQqFT3tjFNnvc",
+  "tags": []
+}
