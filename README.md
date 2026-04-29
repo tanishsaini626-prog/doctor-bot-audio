@@ -207,8 +207,8 @@ cd doctor-bot-audio
 
 Building real AI products, not just college projects.
 
-- 📧 [your email]
-- 💼 [LinkedIn profile]
+- 📧 : tanishsaini626@gmail.com
+- 💼 : 
 - 🐙 [GitHub](https://github.com/tanishsaini626-prog)
 
 ---
