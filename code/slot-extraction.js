@@ -6,6 +6,7 @@ const prevDate       = $input.first().json.prev_date        || null;
 const prevReason     = $input.first().json.prev_reason      || null;
 const prevBookingFor = $input.first().json.prev_booking_for || null;
 const attempt    = $input.first().json.attempt     || "1";
+const prevTimeSlot   = $input.first().json.prev_time_slot   || null;
 
 const slots = {
   name: null,
@@ -138,18 +139,39 @@ if (!slots.reason) {
   if (reasonMatch) slots.reason = reasonMatch[0].trim();
 }
 
-// --- MISSING SLOTS ---
-// Merge with previous turn's slots
-slots.name   = (slots.name   && slots.name   !== "") ? slots.name   : (prevName   || null);
-slots.date   = (slots.date   && slots.date   !== "") ? slots.date   : (prevDate   || null);
-slots.reason = (slots.reason && slots.reason !== "") ? slots.reason : (prevReason || null);
-slots.booking_for = (slots.booking_for && slots.booking_for !== "Self") ? slots.booking_for : (prevBookingFor || slots.booking_for || "Self");
-slots.attempt = attempt;
+// --- CORRECTION DETECTION ---
+const correctionKeywords = [
+  "nahi", "nahin", "नहीं", "galat", "गलत", "actually", 
+  "change", "badlo", "बदलो", "correction", "wrong",
+  "nahi nahi", "arre nahi", "actually nahi"
+];
+const hasCorrection = correctionKeywords.some(k => transcript.toLowerCase().includes(k.toLowerCase()));
 
-// Carry forward merged values as prev for next turn
-slots.prev_name   = slots.name   || "";
-slots.prev_date   = slots.date   || "";
-slots.prev_reason = slots.reason || "";
+// --- MERGE WITH PREVIOUS SLOTS ---
+// If correction detected AND new value found → use new value
+// If no correction AND no new value → use previous value
+// If correction BUT no new value found → keep previous (patient just said nahi but didn't give new value yet)
+// Only wipe slots if it's a generic correction (not time-specific)
+const timeWords = ["subah","shaam","morning","evening","dopahar","raat","baje","night"];
+const isTimeCorrection = timeWords.some(w => transcript.toLowerCase().includes(w));
+
+slots.name = (slots.name && slots.name !== "")
+  ? slots.name
+  : (hasCorrection && !isTimeCorrection ? null : (prevName || null));
+
+slots.date = (slots.date && slots.date !== "")
+  ? slots.date
+  : (hasCorrection && !isTimeCorrection ? null : (prevDate || null));
+
+slots.reason = (slots.reason && slots.reason !== "")
+  ? slots.reason
+  : (hasCorrection && !isTimeCorrection ? null : (prevReason || null));
+
+slots.booking_for = (slots.booking_for && slots.booking_for !== "Self")
+  ? slots.booking_for
+  : (prevBookingFor || slots.booking_for || "Self");
+
+
 
 
 
@@ -206,8 +228,16 @@ if (!slots.time_slot) {
   }
 }
 
-const prevTimeSlot      = $input.first().json.prev_time_slot || null;
-slots.time_slot         = (slots.time_slot && slots.time_slot !== "") ? slots.time_slot : (prevTimeSlot && prevTimeSlot !== "" ? prevTimeSlot : null);
+
+
+// Apply correction logic AFTER extraction
+// Only apply correction if no new value was extracted
+console.log("DEBUG transcript:", transcript, "time_slot after extraction:", slots.time_slot);
+const extractedTimeSlot = slots.time_slot;
+slots.time_slot = extractedTimeSlot
+  ? extractedTimeSlot
+  : (hasCorrection ? null : (prevTimeSlot && prevTimeSlot !== "" ? prevTimeSlot : null));
+
 slots.time_slot_display = slots.time_slot_display || slots.time_slot || null;
 slots.prev_time_slot    = slots.time_slot || "";
 // --- MISSING SLOTS ---
