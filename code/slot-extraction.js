@@ -118,6 +118,86 @@ if (transcript.includes("आज")) {
     }
   }
 }
+// --- ENGLISH DAY NAMES ---
+if (!slots.date) {
+  const dayNames = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+  const dayNamesHi = ["रविवार","सोमवार","मंगलवार","बुधवार","गुरुवार","शुक्रवार","शनिवार"];
+  const transcriptLower = transcript.toLowerCase();
+  for (let i = 0; i < dayNames.length; i++) {
+    if (transcriptLower.includes(dayNames[i])) {
+      const targetDay = i;
+      const currentDay = today.getDay();
+      let daysUntil = targetDay - currentDay;
+      if (daysUntil <= 0) daysUntil += 7;
+      const d = new Date(today);
+      d.setDate(today.getDate() + daysUntil);
+      slots.date = d.toLocaleDateString("en-IN");
+      break;
+    }
+  }
+  if (!slots.date) {
+    for (let i = 0; i < dayNamesHi.length; i++) {
+      if (transcript.includes(dayNamesHi[i])) {
+        const targetDay = i;
+        const currentDay = today.getDay();
+        let daysUntil = targetDay - currentDay;
+        if (daysUntil <= 0) daysUntil += 7;
+        const d = new Date(today);
+        d.setDate(today.getDate() + daysUntil);
+        slots.date = d.toLocaleDateString("en-IN");
+        break;
+      }
+    }
+  }
+  if (!slots.date && (transcript.toLowerCase().includes("next week") || transcript.includes("अगले हफ्ते") || transcript.toLowerCase().includes("agli hafte"))) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + 7);
+    slots.date = d.toLocaleDateString("en-IN");
+  }
+}
+// --- ENGLISH DAY NAMES ---
+if (!slots.date) {
+  const dayNames = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+  const dayNamesHi = ["रविवार","सोमवार","मंगलवार","बुधवार","गुरुवार","शुक्रवार","शनिवार"];
+  const transcriptLower = transcript.toLowerCase();
+  
+  // Check English day names
+  for (let i = 0; i < dayNames.length; i++) {
+    if (transcriptLower.includes(dayNames[i])) {
+      const targetDay = i;
+      const currentDay = today.getDay();
+      let daysUntil = targetDay - currentDay;
+      if (daysUntil <= 0) daysUntil += 7;
+      const d = new Date(today);
+      d.setDate(today.getDate() + daysUntil);
+      slots.date = d.toLocaleDateString("en-IN");
+      break;
+    }
+  }
+  
+  // Check Hindi day names
+  if (!slots.date) {
+    for (let i = 0; i < dayNamesHi.length; i++) {
+      if (transcript.includes(dayNamesHi[i])) {
+        const targetDay = i;
+        const currentDay = today.getDay();
+        let daysUntil = targetDay - currentDay;
+        if (daysUntil <= 0) daysUntil += 7;
+        const d = new Date(today);
+        d.setDate(today.getDate() + daysUntil);
+        slots.date = d.toLocaleDateString("en-IN");
+        break;
+      }
+    }
+  }
+
+  // "next week" / "agli baar" → 7 days from today
+  if (!slots.date && (transcriptLower.includes("next week") || transcriptLower.includes("agli hafte") || transcript.includes("अगले हफ्ते"))) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + 7);
+    slots.date = d.toLocaleDateString("en-IN");
+  }
+}
 
 // --- REASON EXTRACTION ---
 const medicalKeywords = [
@@ -138,6 +218,16 @@ if (!slots.reason) {
   const reasonMatch = transcript.match(/(?:के\s+लिए|की\s+समस्या|तकलीफ)\s*(.{0,30})/);
   if (reasonMatch) slots.reason = reasonMatch[0].trim();
 }
+// --- WRONG NUMBER / IRRELEVANT CALL DETECTION ---
+const wrongNumberPhrases = [
+  "galat number", "wrong number", "galat no", 
+  "koi nahi chahiye", "appointment nahi chahiye",
+  "cancel", "band karo", "rakhna nahi",
+  "galti se", "mistake"
+];
+slots.is_wrong_number = wrongNumberPhrases.some(w => 
+  transcript.toLowerCase().includes(w.toLowerCase())
+);
 
 // --- CORRECTION DETECTION ---
 const correctionKeywords = [
@@ -185,6 +275,11 @@ const timePatterns = [
   { re: /\bafternoon\s*(\d{1,2})/i, period: "Afternoon", offset: 12 },
   { re: /\bevening\s*(\d{1,2})/i,   period: "Evening",   offset: 12 },
   { re: /\bnight\s*(\d{1,2})/i,     period: "Night",     offset: 12 },
+  { re: /\b(\d{1,2})\s*AM\b/i,  period: "Morning", offset: 0  },
+{ re: /\b(\d{1,2})\s*PM\b/i,  period: "Evening", offset: 12 },
+{ re: /\b(\d{1,2})\s*am\b/i,  period: "Morning", offset: 0  },
+{ re: /\b(\d{1,2})\s*pm\b/i,  period: "Evening", offset: 12 },
+{ re: /\b(\d{1,2})\s*o'clock\b/i, period: "Morning", offset: 0 },
 ];
 
 const wordNums = {
@@ -200,6 +295,8 @@ const periodOnly = [
   { words: ["shaam","शाम","sham","evening"],slot: "Evening",   display: "Evening (16:00-19:00)"  },
   { words: ["raat","रात","night"],          slot: "Night",     display: "Night (19:00-21:00)"    },
 ];
+// "any time" fallback
+
 
 slots.time_slot = null;
 slots.time_slot_display = null;
@@ -225,6 +322,14 @@ if (!slots.time_slot) {
       slots.time_slot_display = p.display;
       break;
     }
+  }
+}
+if (!slots.time_slot) {
+  const anyTime = ["koi bhi","kuch bhi","chalega","chalta hai",
+    "कोई भी","कुछ भी","चलेगा","जब भी","whenever","anytime"];
+  if (anyTime.some(w => transcript.toLowerCase().includes(w.toLowerCase()))) {
+    slots.time_slot         = "Morning";
+    slots.time_slot_display = "Morning (9:00-12:00)";
   }
 }
 
