@@ -11,10 +11,10 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
       "position": [
-        0,
-        0
+        -672,
+        -528
       ],
-      "id": "db5254f9-60fe-4803-8991-12574f0a4740",
+      "id": "dfcb4978-27ec-4db1-b1f0-0b890015b0cb",
       "name": "Webhook",
       "webhookId": "3b2a211d-ea2f-4dfa-9440-754b1757b161"
     },
@@ -37,7 +37,7 @@
             {
               "id": "8ec2772c-7c13-4a11-9182-3791b4e4e9c9",
               "name": "twilio_transcript",
-              "value": "={{ $json.body.SpeechResult }}",
+              "value": "={{ $json.body.SpeechResult || $json.body.final_transcript || $json.SpeechResult || \"\" }}",
               "type": "string"
             },
             {
@@ -85,20 +85,21 @@
             {
               "id": "f6c6fbad-9649-4956-9d60-369ab19ada06",
               "name": "attempt",
-              "value": "={{ $json.query.attempt || $json.body.attempt || \"1\" }}",
+              "value": "={{ $json.body.attempt }}",
               "type": "string"
             }
           ]
         },
+        "includeOtherFields": true,
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        208,
-        0
+        -464,
+        -528
       ],
-      "id": "0f58e4b7-a712-4c00-9e20-c4abc8cbce98",
+      "id": "c920f049-4eba-42b0-a015-1ef4ff39fa5a",
       "name": "Edit Fields"
     },
     {
@@ -113,12 +114,11 @@
           "conditions": [
             {
               "id": "04b7fb1c-f25b-45c0-a878-0144adc19e8a",
-              "leftValue": "={{ $json.twilio_transcript }}",
-              "rightValue": "",
+              "leftValue": true,
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -130,10 +130,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        416,
-        0
+        -256,
+        -528
       ],
-      "id": "f57d149d-d1bc-4fbf-9e5f-cbfa78b6c615",
+      "id": "a2fc7307-54aa-4d53-af9a-5ad05ebb2f61",
       "name": "If"
     },
     {
@@ -155,23 +155,23 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        656,
-        64
+        -16,
+        -464
       ],
-      "id": "1f3b32bf-86cb-40bb-bddb-b6963a226950",
+      "id": "42e50db7-88ba-4b7e-9cc1-0e4751dcd8b0",
       "name": "Respond to Webhook"
     },
     {
       "parameters": {
-        "jsCode": "const transcript = $input.first().json.final_transcript || \"\";\nconst phone      = $input.first().json.patient_phone || \"\";\nconst callSid    = $input.first().json.call_sid || \"\";\nconst prevName       = $input.first().json.prev_name        || null;\nconst prevDate       = $input.first().json.prev_date        || null;\nconst prevReason     = $input.first().json.prev_reason      || null;\nconst prevBookingFor = $input.first().json.prev_booking_for || null;\nconst attempt    = $input.first().json.attempt     || \"1\";\nconst prevTimeSlot   = $input.first().json.prev_time_slot   || null;\n\nconst slots = {\n  name: null,\n  date: null,\n  reason: null,\n  raw_text: transcript,\n  phone: phone,\n  call_sid: callSid\n};\n\n// --- NAME EXTRACTION ---\nconst namePatterns = [\n  // Hinglish: \"Priya ke liye appointment\" — name at start\n/^([A-Z][a-z]+)\\s+ke\\s+liye/,\n  // Self booking: \"मेरा नाम X है\"\n  // Hinglish: \"unka naam X hai\"\n  /unka\\s+naam\\s+([^\\s,।]+)/i,\n  \n  // Hinglish: \"naam X hai\"  \n  /naam\\s+([A-Z][^\\s,।]*)/i,\n  \n  // उनका/उसका नाम X है\n  /(?:उनका|उसका|इनका|उनकी|उसकी)\\s+नाम\\s+([^\\s,।]+(?:\\s+[^\\s,।]+)?)/i,\n  /(?:मेरा\\s+नाम|नाम)\\s+([^\\s,।]+(?:\\s+[^\\s,।]+)?)\\s*(?:है|हूँ)?/,\n  \n  // Self: \"मैं X बोल रहा/रही हूँ\"\n  /मैं\\s+([^\\s,।]+(?:\\s+[^\\s,।]+)?)\\s*(?:हूँ|बोल\\s+रह)/,\n  \n  // Third party: \"मेरी मां/पापा/बेटी का नाम X है\"\n  /(?:मेरी|मेरे)\\s+(?:मां|माँ|मम्मी|पापा|बाबा|पिता|बेटी|बेटे|बच्चे|बच्ची|दादी|दादा|नानी|नाना|पत्नी|पति|भाई|बहन)\\s+(?:का|की|के)\\s+नाम\\s+([^\\s,।]+(?:\\s+[^\\s,।]+)?)/,\n  \n  // Third party short: \"X के लिए appointment\"\n  /([^\\s,।]+(?:\\s+[^\\s,।]+)?)\\s+के\\s+लिए\\s+(?:अपॉइंटमेंट|appointment|दिखाना)/i,\n  \n  // Third party: \"उनका/उसका नाम X है\"\n  /(?:उनका|उसका|इनका)\\s+नाम\\s+([^\\s,।]+(?:\\s+[^\\s,।]+)?)/,\n\n  // Called by name: \"X बोल रहा/रही हूँ\"\n  /([^\\s,।]{2,})\\s+बोल\\s+रह[ाी]/,\n];\n// --- RELATION DETECTION ---\nconst relations = {\n  \"मां\": \"Mother\", \"माँ\": \"Mother\", \"मम्मी\": \"Mother\",\n  \"पापा\": \"Father\", \"बाबा\": \"Father\", \"पिता\": \"Father\",\n  \"बेटी\": \"Daughter\", \"बेटे\": \"Son\", \"बच्चे\": \"Child\",\n  \"पत्नी\": \"Wife\", \"पति\": \"Husband\",\n  \"दादी\": \"Grandmother\", \"दादा\": \"Grandfather\",\n  \"नानी\": \"Grandmother\", \"नाना\": \"Grandfather\",\n  \"भाई\": \"Brother\", \"बहन\": \"Sister\",\n  \"papa\": \"Father\", \"pita\": \"Father\", \"baap\": \"Father\",\n\"maa\": \"Mother\", \"mama\": \"Mother\", \"mummy\": \"Mother\",\n\"beti\": \"Daughter\", \"beta\": \"Son\", \"bachche\": \"Child\",\n\"dadi\": \"Grandmother\", \"dada\": \"Grandfather\",\n\"nani\": \"Grandmother\", \"nana\": \"Grandfather\",\n\"bhai\": \"Brother\", \"behen\": \"Sister\", \"bhan\": \"Sister\"\n};\n\nslots.booking_for = \"Self\";\nfor (const [hindi, english] of Object.entries(relations)) {\n  if (transcript.includes(hindi)) {\n    slots.booking_for = english;\n    break;\n  }\n}\nfor (const pattern of namePatterns) {\n  const match = transcript.match(pattern);\n  if (match) { slots.name = match[1].trim(); break; }\n}\n// Blacklist common Hindi words that are not names\nconst notNames = [\"कल\", \"आज\", \"परसों\", \"बुखार\", \"खांसी\", \"दर्द\", \"नहीं\", \"है\", \"हूँ\", \"आना\", \"जाना\", \"कल\", \"थोड़ा\", \"सांस\"];\nif (slots.name && notNames.includes(slots.name.trim())) {\n  slots.name = null;\n}\n\n// --- DATE EXTRACTION ---\nconst today = new Date();\nconst tomorrow = new Date(today);\ntomorrow.setDate(today.getDate() + 1);\nconst dayAfter = new Date(today);\ndayAfter.setDate(today.getDate() + 2);\n\nconst monthMap = {\n  \"जनवरी\":0,\"फरवरी\":1,\"मार्च\":2,\"अप्रैल\":3,\n  \"मई\":4,\"जून\":5,\"जुलाई\":6,\"अगस्त\":7,\n  \"सितंबर\":8,\"अक्टूबर\":9,\"नवंबर\":10,\"दिसंबर\":11\n};\n\nif (transcript.includes(\"आज\")) {\n  slots.date = today.toLocaleDateString(\"en-IN\");\n} else if (transcript.includes(\"कल\")) {\n  slots.date = tomorrow.toLocaleDateString(\"en-IN\");\n} else if (transcript.includes(\"परसों\")) {\n  slots.date = dayAfter.toLocaleDateString(\"en-IN\");\n} else {\n  for (const [monthName, monthNum] of Object.entries(monthMap)) {\n    const monthPattern = new RegExp(`(\\\\d{1,2})\\\\s*${monthName}`);\n    const match = transcript.match(monthPattern);\n    if (match) {\n      const d = new Date(today.getFullYear(), monthNum, parseInt(match[1]));\n      slots.date = d.toLocaleDateString(\"en-IN\");\n      break;\n    }\n  }\n  if (!slots.date) {\n    const numMatch = transcript.match(/(\\d{1,2})\\s*(?:तारीख|को)/);\n    if (numMatch) {\n      const d = new Date(today.getFullYear(), today.getMonth(), parseInt(numMatch[1]));\n      slots.date = d.toLocaleDateString(\"en-IN\");\n    }\n  }\n}\n// --- ENGLISH DAY NAMES ---\nif (!slots.date) {\n  const dayNames = [\"sunday\",\"monday\",\"tuesday\",\"wednesday\",\"thursday\",\"friday\",\"saturday\"];\n  const dayNamesHi = [\"रविवार\",\"सोमवार\",\"मंगलवार\",\"बुधवार\",\"गुरुवार\",\"शुक्रवार\",\"शनिवार\"];\n  const transcriptLower = transcript.toLowerCase();\n  for (let i = 0; i < dayNames.length; i++) {\n    if (transcriptLower.includes(dayNames[i])) {\n      const targetDay = i;\n      const currentDay = today.getDay();\n      let daysUntil = targetDay - currentDay;\n      if (daysUntil <= 0) daysUntil += 7;\n      const d = new Date(today);\n      d.setDate(today.getDate() + daysUntil);\n      slots.date = d.toLocaleDateString(\"en-IN\");\n      break;\n    }\n  }\n  if (!slots.date) {\n    for (let i = 0; i < dayNamesHi.length; i++) {\n      if (transcript.includes(dayNamesHi[i])) {\n        const targetDay = i;\n        const currentDay = today.getDay();\n        let daysUntil = targetDay - currentDay;\n        if (daysUntil <= 0) daysUntil += 7;\n        const d = new Date(today);\n        d.setDate(today.getDate() + daysUntil);\n        slots.date = d.toLocaleDateString(\"en-IN\");\n        break;\n      }\n    }\n  }\n  if (!slots.date && (transcript.toLowerCase().includes(\"next week\") || transcript.includes(\"अगले हफ्ते\") || transcript.toLowerCase().includes(\"agli hafte\"))) {\n    const d = new Date(today);\n    d.setDate(today.getDate() + 7);\n    slots.date = d.toLocaleDateString(\"en-IN\");\n  }\n}\n// --- ENGLISH DAY NAMES ---\nif (!slots.date) {\n  const dayNames = [\"sunday\",\"monday\",\"tuesday\",\"wednesday\",\"thursday\",\"friday\",\"saturday\"];\n  const dayNamesHi = [\"रविवार\",\"सोमवार\",\"मंगलवार\",\"बुधवार\",\"गुरुवार\",\"शुक्रवार\",\"शनिवार\"];\n  const transcriptLower = transcript.toLowerCase();\n  \n  // Check English day names\n  for (let i = 0; i < dayNames.length; i++) {\n    if (transcriptLower.includes(dayNames[i])) {\n      const targetDay = i;\n      const currentDay = today.getDay();\n      let daysUntil = targetDay - currentDay;\n      if (daysUntil <= 0) daysUntil += 7;\n      const d = new Date(today);\n      d.setDate(today.getDate() + daysUntil);\n      slots.date = d.toLocaleDateString(\"en-IN\");\n      break;\n    }\n  }\n  \n  // Check Hindi day names\n  if (!slots.date) {\n    for (let i = 0; i < dayNamesHi.length; i++) {\n      if (transcript.includes(dayNamesHi[i])) {\n        const targetDay = i;\n        const currentDay = today.getDay();\n        let daysUntil = targetDay - currentDay;\n        if (daysUntil <= 0) daysUntil += 7;\n        const d = new Date(today);\n        d.setDate(today.getDate() + daysUntil);\n        slots.date = d.toLocaleDateString(\"en-IN\");\n        break;\n      }\n    }\n  }\n\n  // \"next week\" / \"agli baar\" → 7 days from today\n  if (!slots.date && (transcriptLower.includes(\"next week\") || transcriptLower.includes(\"agli hafte\") || transcript.includes(\"अगले हफ्ते\"))) {\n    const d = new Date(today);\n    d.setDate(today.getDate() + 7);\n    slots.date = d.toLocaleDateString(\"en-IN\");\n  }\n}\n\n// --- REASON EXTRACTION ---\nconst medicalKeywords = [\n  \"bukhaar\", \"bukhar\", \"khansi\", \"sardee\", \"dard\", \"pet\", \"sir\",\n  \"बुखार\",\"खांसी\",\"सर्दी\",\"दर्द\",\"चोट\",\"जाँच\",\"checkup\",\"चेकअप\",\n  \"उल्टी\",\"दस्त\",\"सिरदर्द\",\"पेट दर्द\",\"कमर दर्द\",\"आँख\",\n  \"कान\",\"गला\",\"दांत\",\"एलर्जी\",\"डायबिटीज\",\"ब्लड प्रेशर\",\n  \"शुगर\",\"सांस\",\"थकान\",\"बीपी\",\"BP\",\"fever\",\"dikhana\",\"दिखाना\",\"checkup\",\"pain\",\"दवाई\"\n  \n];\nfor (const kw of medicalKeywords) {\n  if (transcript.toLowerCase().includes(kw.toLowerCase())) {\n    slots.reason = kw;\n    break;\n  }\n}\nif (!slots.reason) {\n  const reasonMatch = transcript.match(/(?:के\\s+लिए|की\\s+समस्या|तकलीफ)\\s*(.{0,30})/);\n  if (reasonMatch) slots.reason = reasonMatch[0].trim();\n}\n// --- WRONG NUMBER / IRRELEVANT CALL DETECTION ---\nconst wrongNumberPhrases = [\n  \"galat number\", \"wrong number\", \"galat no\", \n  \"koi nahi chahiye\", \"appointment nahi chahiye\",\n  \"cancel\", \"band karo\", \"rakhna nahi\",\n  \"galti se\", \"mistake\"\n];\nslots.is_wrong_number = wrongNumberPhrases.some(w => \n  transcript.toLowerCase().includes(w.toLowerCase())\n);\n\n// --- CORRECTION DETECTION ---\nconst correctionKeywords = [\n  \"nahi\", \"nahin\", \"नहीं\", \"galat\", \"गलत\", \"actually\", \n  \"change\", \"badlo\", \"बदलो\", \"correction\", \"wrong\",\n  \"nahi nahi\", \"arre nahi\", \"actually nahi\"\n];\nconst hasCorrection = correctionKeywords.some(k => transcript.toLowerCase().includes(k.toLowerCase()));\n\n// --- MERGE WITH PREVIOUS SLOTS ---\n// If correction detected AND new value found → use new value\n// If no correction AND no new value → use previous value\n// If correction BUT no new value found → keep previous (patient just said nahi but didn't give new value yet)\n// Only wipe slots if it's a generic correction (not time-specific)\nconst timeWords = [\"subah\",\"shaam\",\"morning\",\"evening\",\"dopahar\",\"raat\",\"baje\",\"night\"];\nconst isTimeCorrection = timeWords.some(w => transcript.toLowerCase().includes(w));\n\nslots.name = (slots.name && slots.name !== \"\")\n  ? slots.name\n  : (hasCorrection && !isTimeCorrection ? null : (prevName || null));\n\nslots.date = (slots.date && slots.date !== \"\")\n  ? slots.date\n  : (hasCorrection && !isTimeCorrection ? null : (prevDate || null));\n\nslots.reason = (slots.reason && slots.reason !== \"\")\n  ? slots.reason\n  : (hasCorrection && !isTimeCorrection ? null : (prevReason || null));\n\nslots.booking_for = (slots.booking_for && slots.booking_for !== \"Self\")\n  ? slots.booking_for\n  : (prevBookingFor || slots.booking_for || \"Self\");\n\n\n\n\n\n// --- TIME SLOT EXTRACTION ---\nconst timePatterns = [\n  { re: /(?:subah|सुबह)\\s*(\\d{1,2})\\s*(?:baje|बजे|baj|am|AM)?/i,     period: \"Morning\",   offset: 0  },\n  { re: /(?:dopahar|दोपहर)\\s*(\\d{1,2})\\s*(?:baje|बजे|baj)?/i,         period: \"Afternoon\", offset: 12 },\n  { re: /(?:shaam|शाम|sham)\\s*(\\d{1,2})\\s*(?:baje|बजे|baj|pm|PM)?/i,  period: \"Evening\",   offset: 12 },\n  { re: /(?:raat|रात)\\s*(\\d{1,2})\\s*(?:baje|बजे|baj)?/i,              period: \"Night\",     offset: 12 },\n  { re: /\\bmorning\\s*(\\d{1,2})/i,   period: \"Morning\",   offset: 0  },\n  { re: /\\bafternoon\\s*(\\d{1,2})/i, period: \"Afternoon\", offset: 12 },\n  { re: /\\bevening\\s*(\\d{1,2})/i,   period: \"Evening\",   offset: 12 },\n  { re: /\\bnight\\s*(\\d{1,2})/i,     period: \"Night\",     offset: 12 },\n  { re: /\\b(\\d{1,2})\\s*AM\\b/i,  period: \"Morning\", offset: 0  },\n{ re: /\\b(\\d{1,2})\\s*PM\\b/i,  period: \"Evening\", offset: 12 },\n{ re: /\\b(\\d{1,2})\\s*am\\b/i,  period: \"Morning\", offset: 0  },\n{ re: /\\b(\\d{1,2})\\s*pm\\b/i,  period: \"Evening\", offset: 12 },\n{ re: /\\b(\\d{1,2})\\s*o'clock\\b/i, period: \"Morning\", offset: 0 },\n];\n\nconst wordNums = {\n  \"ek\":1,\"do\":2,\"teen\":3,\"chaar\":4,\"paanch\":5,\"chhah\":6,\n  \"saat\":7,\"aath\":8,\"nau\":9,\"das\":10,\"gyarah\":11,\"barah\":12,\n  \"एक\":1,\"दो\":2,\"तीन\":3,\"चार\":4,\"पाँच\":5,\"छह\":6,\n  \"सात\":7,\"आठ\":8,\"नौ\":9,\"दस\":10,\"ग्यारह\":11,\"बारह\":12\n};\n\nconst periodOnly = [\n  { words: [\"subah\",\"सुबह\",\"morning\"],      slot: \"Morning\",   display: \"Morning (9:00-12:00)\"   },\n  { words: [\"dopahar\",\"दोपहर\",\"afternoon\"], slot: \"Afternoon\", display: \"Afternoon (12:00-16:00)\" },\n  { words: [\"shaam\",\"शाम\",\"sham\",\"evening\"],slot: \"Evening\",   display: \"Evening (16:00-19:00)\"  },\n  { words: [\"raat\",\"रात\",\"night\"],          slot: \"Night\",     display: \"Night (19:00-21:00)\"    },\n];\n// \"any time\" fallback\n\n\nslots.time_slot = null;\nslots.time_slot_display = null;\n\nfor (const p of timePatterns) {\n  const m = transcript.match(p.re);\n  if (m) {\n    let hour = parseInt(m[1]);\n    if (hour >= 1 && hour <= 12) {\n      const h24 = (p.offset === 12 && hour < 12) ? hour + 12 : hour;\n      const hh = String(h24).padStart(2, \"0\");\n      slots.time_slot         = `${p.period} ${hh}:00`;\n      slots.time_slot_display = `${p.period} ${hh}:00`;\n      break;\n    }\n  }\n}\n\nif (!slots.time_slot) {\n  for (const p of periodOnly) {\n    if (p.words.some(w => transcript.toLowerCase().includes(w.toLowerCase()))) {\n      slots.time_slot         = p.slot;\n      slots.time_slot_display = p.display;\n      break;\n    }\n  }\n}\nif (!slots.time_slot) {\n  const anyTime = [\"koi bhi\",\"kuch bhi\",\"chalega\",\"chalta hai\",\n    \"कोई भी\",\"कुछ भी\",\"चलेगा\",\"जब भी\",\"whenever\",\"anytime\"];\n  if (anyTime.some(w => transcript.toLowerCase().includes(w.toLowerCase()))) {\n    slots.time_slot         = \"Morning\";\n    slots.time_slot_display = \"Morning (9:00-12:00)\";\n  }\n}\n\n\n\n// Apply correction logic AFTER extraction\n// Only apply correction if no new value was extracted\nconsole.log(\"DEBUG transcript:\", transcript, \"time_slot after extraction:\", slots.time_slot);\nconst extractedTimeSlot = slots.time_slot;\nslots.time_slot = extractedTimeSlot\n  ? extractedTimeSlot\n  : (hasCorrection ? null : (prevTimeSlot && prevTimeSlot !== \"\" ? prevTimeSlot : null));\n\nslots.time_slot_display = slots.time_slot_display || slots.time_slot || null;\nslots.prev_time_slot    = slots.time_slot || \"\";\n// --- MISSING SLOTS ---\nslots.missing = [];\nif (!slots.name   || slots.name   === \"\") slots.missing.push({ field: \"name\",      hindi: \"आपका नाम\" });\nif (!slots.date   || slots.date   === \"\") slots.missing.push({ field: \"date\",      hindi: \"अपॉइंटमेंट की तारीख\" });\nif (!slots.time_slot || slots.time_slot === \"\") slots.missing.push({ field: \"time_slot\", hindi: \"कौन से समय पर आना है, सुबह या शाम\" });\nif (!slots.reason || slots.reason === \"\") slots.missing.push({ field: \"reason\",    hindi: \"बीमारी का कारण\" });\n\nslots.all_collected = slots.missing.length === 0;\nreturn [{ json: slots }];"
+        "jsCode": "const transcript = $input.first().json.final_transcript || \"\";\nconst phone      = $input.first().json.patient_phone || \"\";\nconst callSid    = $input.first().json.call_sid || \"\";\nconst prevName       = $input.first().json.prev_name        || null;\nconst prevDate       = $input.first().json.prev_date        || null;\nconst prevReason     = $input.first().json.prev_reason      || null;\nconst prevBookingFor = $input.first().json.prev_booking_for || null;\nconst attempt    = $input.first().json.attempt     || \"1\";\nconst prevTimeSlot   = $input.first().json.prev_time_slot   || null;\n\nconst slots = {\n  name: null,\n  date: null,\n  reason: null,\n  raw_text: transcript,\n  phone: phone,\n  call_sid: callSid\n};\n\n// --- NAME EXTRACTION ---\nconst namePatterns = [\n  // Hinglish: \"Priya ke liye appointment\" — name at start\n/^([A-Z][a-z]+)\\s+ke\\s+liye/,\n  // Self booking: \"मेरा नाम X है\"\n  // Hinglish: \"unka naam X hai\"\n  /unka\\s+naam\\s+([^\\s,।]+)/i,\n  \n  // Hinglish: \"naam X hai\"  \n  /naam\\s+([A-Z][^\\s,।]*)/i,\n  \n  // उनका/उसका नाम X है\n  /(?:उनका|उसका|इनका|उनकी|उसकी)\\s+नाम\\s+([^\\s,।]+(?:\\s+[^\\s,।]+)?)/i,\n  /(?:मेरा\\s+नाम|नाम)\\s+([^\\s,।]+(?:\\s+[^\\s,।]+)?)\\s*(?:है|हूँ)?/,\n  \n  // Self: \"मैं X बोल रहा/रही हूँ\"\n  /मैं\\s+([^\\s,।]+(?:\\s+[^\\s,।]+)?)\\s*(?:हूँ|बोल\\s+रह)/,\n  \n  // Third party: \"मेरी मां/पापा/बेटी का नाम X है\"\n  /(?:मेरी|मेरे)\\s+(?:मां|माँ|मम्मी|पापा|बाबा|पिता|बेटी|बेटे|बच्चे|बच्ची|दादी|दादा|नानी|नाना|पत्नी|पति|भाई|बहन)\\s+(?:का|की|के)\\s+नाम\\s+([^\\s,।]+(?:\\s+[^\\s,।]+)?)/,\n  \n  // Third party short: \"X के लिए appointment\"\n  /([^\\s,।]+(?:\\s+[^\\s,।]+)?)\\s+के\\s+लिए\\s+(?:अपॉइंटमेंट|appointment|दिखाना)/i,\n  \n  // Third party: \"उनका/उसका नाम X है\"\n  /(?:उनका|उसका|इनका)\\s+नाम\\s+([^\\s,।]+(?:\\s+[^\\s,।]+)?)/,\n\n  // Called by name: \"X बोल रहा/रही हूँ\"\n  /([^\\s,।]{2,})\\s+बोल\\s+रह[ाी]/,\n];\n// --- RELATION DETECTION ---\nconst relations = {\n  \"मां\": \"Mother\", \"माँ\": \"Mother\", \"मम्मी\": \"Mother\",\n  \"पापा\": \"Father\", \"बाबा\": \"Father\", \"पिता\": \"Father\",\n  \"बेटी\": \"Daughter\", \"बेटे\": \"Son\", \"बच्चे\": \"Child\",\n  \"पत्नी\": \"Wife\", \"पति\": \"Husband\",\n  \"दादी\": \"Grandmother\", \"दादा\": \"Grandfather\",\n  \"नानी\": \"Grandmother\", \"नाना\": \"Grandfather\",\n  \"भाई\": \"Brother\", \"बहन\": \"Sister\",\n  \"papa\": \"Father\", \"pita\": \"Father\", \"baap\": \"Father\",\n\"maa\": \"Mother\", \"mama\": \"Mother\", \"mummy\": \"Mother\",\n\"beti\": \"Daughter\", \"beta\": \"Son\", \"bachche\": \"Child\",\n\"dadi\": \"Grandmother\", \"dada\": \"Grandfather\",\n\"nani\": \"Grandmother\", \"nana\": \"Grandfather\",\n\"bhai\": \"Brother\", \"behen\": \"Sister\", \"bhan\": \"Sister\"\n};\n\nslots.booking_for = \"Self\";\nfor (const [hindi, english] of Object.entries(relations)) {\n  if (transcript.includes(hindi)) {\n    slots.booking_for = english;\n    break;\n  }\n}\nfor (const pattern of namePatterns) {\n  const match = transcript.match(pattern);\n  if (match) { slots.name = match[1].trim(); break; }\n}\n// Blacklist common Hindi words that are not names\nconst notNames = [\"कल\", \"आज\", \"परसों\", \"बुखार\", \"खांसी\", \"दर्द\", \"नहीं\", \"है\", \"हूँ\", \"आना\", \"जाना\", \"कल\", \"थोड़ा\", \"सांस\"];\nif (slots.name && notNames.includes(slots.name.trim())) {\n  slots.name = null;\n}\n\n// --- DATE EXTRACTION ---\nconst today = new Date();\nconst tomorrow = new Date(today);\ntomorrow.setDate(today.getDate() + 1);\nconst dayAfter = new Date(today);\ndayAfter.setDate(today.getDate() + 2);\n\nconst monthMap = {\n  \"जनवरी\":0,\"फरवरी\":1,\"मार्च\":2,\"अप्रैल\":3,\n  \"मई\":4,\"जून\":5,\"जुलाई\":6,\"अगस्त\":7,\n  \"सितंबर\":8,\"अक्टूबर\":9,\"नवंबर\":10,\"दिसंबर\":11\n};\n\nif (transcript.includes(\"आज\")) {\n  slots.date = today.toLocaleDateString(\"en-IN\");\n} else if (transcript.includes(\"कल\")) {\n  slots.date = tomorrow.toLocaleDateString(\"en-IN\");\n} else if (transcript.includes(\"परसों\")) {\n  slots.date = dayAfter.toLocaleDateString(\"en-IN\");\n} else {\n  for (const [monthName, monthNum] of Object.entries(monthMap)) {\n    const monthPattern = new RegExp(`(\\\\d{1,2})\\\\s*${monthName}`);\n    const match = transcript.match(monthPattern);\n    if (match) {\n      const d = new Date(today.getFullYear(), monthNum, parseInt(match[1]));\n      slots.date = d.toLocaleDateString(\"en-IN\");\n      break;\n    }\n  }\n  if (!slots.date) {\n    const numMatch = transcript.match(/(\\d{1,2})\\s*(?:तारीख|को)/);\n    if (numMatch) {\n      const d = new Date(today.getFullYear(), today.getMonth(), parseInt(numMatch[1]));\n      slots.date = d.toLocaleDateString(\"en-IN\");\n    }\n  }\n}\n\n// --- REASON EXTRACTION ---\nconst medicalKeywords = [\n  \"bukhaar\", \"bukhar\", \"khansi\", \"sardee\", \"dard\", \"pet\", \"sir\",\n  \"बुखार\",\"खांसी\",\"सर्दी\",\"दर्द\",\"चोट\",\"जाँच\",\"checkup\",\"चेकअप\",\n  \"उल्टी\",\"दस्त\",\"सिरदर्द\",\"पेट दर्द\",\"कमर दर्द\",\"आँख\",\n  \"कान\",\"गला\",\"दांत\",\"एलर्जी\",\"डायबिटीज\",\"ब्लड प्रेशर\",\n  \"शुगर\",\"सांस\",\"थकान\",\"बीपी\",\"BP\",\"fever\",\"dikhana\",\"दिखाना\",\"checkup\",\"pain\",\"दवाई\"\n  \n];\nfor (const kw of medicalKeywords) {\n  if (transcript.toLowerCase().includes(kw.toLowerCase())) {\n    slots.reason = kw;\n    break;\n  }\n}\nif (!slots.reason) {\n  const reasonMatch = transcript.match(/(?:के\\s+लिए|की\\s+समस्या|तकलीफ)\\s*(.{0,30})/);\n  if (reasonMatch) slots.reason = reasonMatch[0].trim();\n}\n\n// --- CORRECTION DETECTION ---\nconst correctionKeywords = [\n  \"nahi\", \"nahin\", \"नहीं\", \"galat\", \"गलत\", \"actually\", \n  \"change\", \"badlo\", \"बदलो\", \"correction\", \"wrong\",\n  \"nahi nahi\", \"arre nahi\", \"actually nahi\"\n];\nconst hasCorrection = correctionKeywords.some(k => transcript.toLowerCase().includes(k.toLowerCase()));\n\n// --- MERGE WITH PREVIOUS SLOTS ---\n// If correction detected AND new value found → use new value\n// If no correction AND no new value → use previous value\n// If correction BUT no new value found → keep previous (patient just said nahi but didn't give new value yet)\n// Only wipe slots if it's a generic correction (not time-specific)\nconst timeWords = [\"subah\",\"shaam\",\"morning\",\"evening\",\"dopahar\",\"raat\",\"baje\",\"night\"];\nconst isTimeCorrection = timeWords.some(w => transcript.toLowerCase().includes(w));\n\nslots.name = (slots.name && slots.name !== \"\")\n  ? slots.name\n  : (hasCorrection && !isTimeCorrection ? null : (prevName || null));\n\nslots.date = (slots.date && slots.date !== \"\")\n  ? slots.date\n  : (hasCorrection && !isTimeCorrection ? null : (prevDate || null));\n\nslots.reason = (slots.reason && slots.reason !== \"\")\n  ? slots.reason\n  : (hasCorrection && !isTimeCorrection ? null : (prevReason || null));\n\nslots.booking_for = (slots.booking_for && slots.booking_for !== \"Self\")\n  ? slots.booking_for\n  : (prevBookingFor || slots.booking_for || \"Self\");\n\n\n\n\n\n// --- TIME SLOT EXTRACTION ---\nconst timePatterns = [\n  { re: /(?:subah|सुबह)\\s*(\\d{1,2})\\s*(?:baje|बजे|baj|am|AM)?/i,     period: \"Morning\",   offset: 0  },\n  { re: /(?:dopahar|दोपहर)\\s*(\\d{1,2})\\s*(?:baje|बजे|baj)?/i,         period: \"Afternoon\", offset: 12 },\n  { re: /(?:shaam|शाम|sham)\\s*(\\d{1,2})\\s*(?:baje|बजे|baj|pm|PM)?/i,  period: \"Evening\",   offset: 12 },\n  { re: /(?:raat|रात)\\s*(\\d{1,2})\\s*(?:baje|बजे|baj)?/i,              period: \"Night\",     offset: 12 },\n  { re: /\\bmorning\\s*(\\d{1,2})/i,   period: \"Morning\",   offset: 0  },\n  { re: /\\bafternoon\\s*(\\d{1,2})/i, period: \"Afternoon\", offset: 12 },\n  { re: /\\bevening\\s*(\\d{1,2})/i,   period: \"Evening\",   offset: 12 },\n  { re: /\\bnight\\s*(\\d{1,2})/i,     period: \"Night\",     offset: 12 },\n];\n\nconst wordNums = {\n  \"ek\":1,\"do\":2,\"teen\":3,\"chaar\":4,\"paanch\":5,\"chhah\":6,\n  \"saat\":7,\"aath\":8,\"nau\":9,\"das\":10,\"gyarah\":11,\"barah\":12,\n  \"एक\":1,\"दो\":2,\"तीन\":3,\"चार\":4,\"पाँच\":5,\"छह\":6,\n  \"सात\":7,\"आठ\":8,\"नौ\":9,\"दस\":10,\"ग्यारह\":11,\"बारह\":12\n};\n\nconst periodOnly = [\n  { words: [\"subah\",\"सुबह\",\"morning\"],      slot: \"Morning\",   display: \"Morning (9:00-12:00)\"   },\n  { words: [\"dopahar\",\"दोपहर\",\"afternoon\"], slot: \"Afternoon\", display: \"Afternoon (12:00-16:00)\" },\n  { words: [\"shaam\",\"शाम\",\"sham\",\"evening\"],slot: \"Evening\",   display: \"Evening (16:00-19:00)\"  },\n  { words: [\"raat\",\"रात\",\"night\"],          slot: \"Night\",     display: \"Night (19:00-21:00)\"    },\n];\n\nslots.time_slot = null;\nslots.time_slot_display = null;\n\nfor (const p of timePatterns) {\n  const m = transcript.match(p.re);\n  if (m) {\n    let hour = parseInt(m[1]);\n    if (hour >= 1 && hour <= 12) {\n      const h24 = (p.offset === 12 && hour < 12) ? hour + 12 : hour;\n      const hh = String(h24).padStart(2, \"0\");\n      slots.time_slot         = `${p.period} ${hh}:00`;\n      slots.time_slot_display = `${p.period} ${hh}:00`;\n      break;\n    }\n  }\n}\n\nif (!slots.time_slot) {\n  for (const p of periodOnly) {\n    if (p.words.some(w => transcript.toLowerCase().includes(w.toLowerCase()))) {\n      slots.time_slot         = p.slot;\n      slots.time_slot_display = p.display;\n      break;\n    }\n  }\n}\n\n\n\n// Apply correction logic AFTER extraction\n// Only apply correction if no new value was extracted\nconsole.log(\"DEBUG transcript:\", transcript, \"time_slot after extraction:\", slots.time_slot);\nconst extractedTimeSlot = slots.time_slot;\nslots.time_slot = extractedTimeSlot\n  ? extractedTimeSlot\n  : (hasCorrection ? null : (prevTimeSlot && prevTimeSlot !== \"\" ? prevTimeSlot : null));\n\nslots.time_slot_display = slots.time_slot_display || slots.time_slot || null;\nslots.prev_time_slot    = slots.time_slot || \"\";\n// --- MISSING SLOTS ---\nslots.missing = [];\nif (!slots.name   || slots.name   === \"\") slots.missing.push({ field: \"name\",      hindi: \"आपका नाम\" });\nif (!slots.date   || slots.date   === \"\") slots.missing.push({ field: \"date\",      hindi: \"अपॉइंटमेंट की तारीख\" });\nif (!slots.time_slot || slots.time_slot === \"\") slots.missing.push({ field: \"time_slot\", hindi: \"कौन से समय पर आना है, सुबह या शाम\" });\nif (!slots.reason || slots.reason === \"\") slots.missing.push({ field: \"reason\",    hindi: \"बीमारी का कारण\" });\n\nslots.all_collected = slots.missing.length === 0;\nslots.attempt = attempt || \"0\";\nreturn [{ json: slots }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        672,
-        -192
+        0,
+        -720
       ],
-      "id": "371ff870-2d61-4b07-9962-e567b109c93f",
+      "id": "412373af-a6bc-4b09-b20b-20b8060f3eaf",
       "name": "Code in JavaScript"
     },
     {
@@ -202,29 +202,27 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        912,
-        -48
+        240,
+        -576
       ],
-      "id": "f3e6ff1d-6eb3-4c89-8197-0b57081b4a01",
+      "id": "f9774646-c798-4fc3-89e8-5a783169a297",
       "name": "If1"
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nconst missing = input.missing || [];\n// Handle wrong number\nif (input.is_wrong_number) {\n  return [{ json: {\n    twiml: `<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Say language=\"hi-IN\">Koi baat nahi. Agar aapko appointment chahiye toh dobara call karein. Dhanyavaad!</Say><Hangup/></Response>`,\n    gave_up: true\n  }}];\n}\n\nfunction buildQuestion(missingSlots) {\n  if (missingSlots.length === 0) return null;\n  const first = missingSlots[0].field;\n  const questions = {\n    name:   \"क्षमा करें, मुझे आपका नाम सुनाई नहीं दिया। कृपया अपना पूरा नाम बताएं।\",\n    date:   \"धन्यवाद! अब कृपया बताएं आप किस तारीख को अपॉइंटमेंट लेना चाहते हैं?\",\n    reason: \"ठीक है! कृपया बताएं आपको किस समस्या के लिए डॉक्टर से मिलना है?\"\n  };\n  return questions[first] || `कृपया अपना ${missingSlots[0].hindi} बताएं।`;\n}\n\nconst question = buildQuestion(missing);\nconst attempt = parseInt(input.attempt || \"1\") + 1;\n\nif (attempt > 3) {\n  return [{ json: {\n    twiml: `<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Say language=\"hi-IN\">Kshama karein, aap baad mein call karein. Dhanyavaad!</Say><Hangup/></Response>`,\n    gave_up: true,\n    // Pass partial data so Append node can save it\n    name: input.name || \"Unknown\",\n    date: input.date || \"Not provided\",\n    reason: input.reason || \"Not provided\",\n    time_slot: input.time_slot || \"Not provided\",\n    booking_for: input.booking_for || \"Self\",\n    phone: input.phone || \"\",\n    call_sid: input.call_sid || \"\",\n    raw_text: input.raw_text || \"\",\n    status: \"Incomplete\"\n  }}];\n}\n\nconst prevName   = encodeURIComponent(input.name   || input.prev_name   || \"\");\nconst prevDate   = encodeURIComponent(input.date   || input.prev_date   || \"\");\nconst prevReason = encodeURIComponent(input.reason || input.prev_reason || \"\");\nconst prevTimeSlot   = encodeURIComponent(input.time_slot || input.prev_time_slot || \"\");\nconst prevBookingFor = encodeURIComponent(input.booking_for || input.prev_booking_for || \"\");\n\nconst actionUrl = `https://tannish13.app.n8n.cloud/webhook/gather?prev_name=${prevName}&prev_date=${prevDate}&prev_reason=${prevReason}&prev_booking_for=${prevBookingFor}&prev_time_slot=${prevTimeSlot}&attempt=${attempt}`;\n\nconst twiml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Gather input=\"speech\" language=\"hi-IN\" speechTimeout=\"5\" action=\"${actionUrl}\" method=\"POST\"><Say language=\"hi-IN\">${question}</Say></Gather><Say language=\"hi-IN\">क्षमा करें, कृपया दोबारा कॉल करें।</Say></Response>`;\n\nreturn [{ json: { twiml, question_asked: question, attempt } }];"
+        "jsCode": "const input = $input.first().json;\nconst missing = input.missing || [];\n\nif (input.is_wrong_number) {\n  return [{ json: {\n    twiml: `<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Say language=\"hi-IN\">Koi baat nahi. Agar aapko appointment chahiye toh dobara call karein. Dhanyavaad!</Say><Hangup/></Response>`,\n    gave_up: true,\n    name: input.name || input.prev_name || \"Unknown\",\n    date: input.date || input.prev_date || \"Not provided\",\n    reason: input.reason || input.prev_reason || \"Not provided\",\n    time_slot: input.time_slot || input.prev_time_slot || \"Not provided\",\n    booking_for: input.booking_for || input.prev_booking_for || \"Self\",\n    phone: input.phone || \"\",\n    call_sid: input.call_sid || \"\",\n    raw_text: input.raw_text || \"\",\n    status: \"Incomplete\"\n  }}];\n}\n\nfunction buildQuestion(missingSlots) {\n  if (missingSlots.length === 0) return null;\n  const first = missingSlots[0].field;\n  const questions = {\n    name:      \"क्षमा करें, मुझे आपका नाम सुनाई नहीं दिया। कृपया अपना पूरा नाम बताएं।\",\n    date:      \"धन्यवाद! अब कृपया बताएं आप किस तारीख को अपॉइंटमेंट लेना चाहते हैं?\",\n    time_slot: \"ठीक है! आप कौन सा समय चाहते हैं — सुबह, दोपहर, या शाम?\",\n    reason:    \"कृपया बताएं आपको किस समस्या के लिए डॉक्टर से मिलना है?\"\n  };\n  return questions[first] || `कृपया अपना ${missingSlots[0].hindi} बताएं।`;\n}\n\nconst currentAttempt = parseInt(input.attempt || \"0\");\n\nconst partialData = {\n  name:        input.name        || input.prev_name        || \"Unknown\",\n  date:        input.date        || input.prev_date        || \"Not provided\",\n  reason:      input.reason      || input.prev_reason      || \"Not provided\",\n  time_slot:   input.time_slot   || input.prev_time_slot   || \"Not provided\",\n  booking_for: input.booking_for || input.prev_booking_for || \"Self\",\n  phone:       input.phone       || \"\",\n  call_sid:    input.call_sid    || \"\",\n  raw_text:    input.raw_text    || \"\",\n  status:      \"Incomplete\"\n};\n\nif (currentAttempt >= 3) {\n  return [{ json: {\n    twiml: `<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Say language=\"hi-IN\">Kshama karein, aap baad mein call karein. Dhanyavaad!</Say><Hangup/></Response>`,\n    gave_up: true,\n    ...partialData\n  }}];\n}\n\nconst question = buildQuestion(missing);\n\nif (!question) {\n  return [{ json: {\n    twiml: `<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Say language=\"hi-IN\">Dhanyavaad! Aapki jaankari prapt ho gayi.</Say><Hangup/></Response>`,\n    gave_up: false,\n    ...partialData\n  }}];\n}\n\nconst nextAttempt = currentAttempt + 1;\n\nconst prevName       = encodeURIComponent(partialData.name);\nconst prevDate       = encodeURIComponent(partialData.date);\nconst prevReason     = encodeURIComponent(partialData.reason);\nconst prevTimeSlot   = encodeURIComponent(partialData.time_slot);\nconst prevBookingFor = encodeURIComponent(partialData.booking_for);\n\nconst actionUrl = `https://grope-tanned-overcook.ngrok-free.dev/webhook/gather?prev_name=${prevName}&prev_date=${prevDate}&prev_reason=${prevReason}&prev_booking_for=${prevBookingFor}&prev_time_slot=${prevTimeSlot}&attempt=${nextAttempt}`;\n\nconst twiml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Gather input=\"speech\" language=\"hi-IN\" speechTimeout=\"5\" action=\"${actionUrl}\" method=\"POST\"><Say language=\"hi-IN\">${question}</Say></Gather><Say language=\"hi-IN\">क्षमा करें, कृपया दोबारा कॉल करें।</Say></Response>`;\n\nreturn [{ json: {\n  twiml,\n  question_asked: question,\n  attempt: nextAttempt,\n  gave_up: false,\n  ...partialData\n}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1216,
-        0
+        544,
+        -528
       ],
-      "id": "9ecf31b0-81ee-4010-b95a-b46218b3dda1",
+      "id": "78fef615-22e6-48d1-b181-aacef6411f72",
       "name": "Code in JavaScript1"
     },
     {
       "parameters": {
-        "respondWith": "text",
-        "responseBody": "={{ $json.twiml }}",
         "options": {
           "responseCode": 200,
           "responseHeaders": {
@@ -240,10 +238,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        1424,
-        0
+        1216,
+        -544
       ],
-      "id": "71aa7a4a-7e7d-464b-9b3b-0a5c2b2635ff",
+      "id": "fe3348d4-d273-4bf3-b29c-aa65fe681ae3",
       "name": "Respond to Webhook1"
     },
     {
@@ -273,7 +271,7 @@
             "Medical Reason": "={{ $json.reason }}",
             "Raw Transcript": "={{ $json.raw_text }}",
             "Call SID": "={{ $json.call_sid }}",
-            "Status": "={{ $json.status || \"Confirmed\" }}",
+            "Status": "Confirmed",
             "Booking For": "={{ $json.booking_for }}",
             "Time Slot": "={{ $json.time_slot_display }}"
           },
@@ -380,14 +378,14 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        1216,
-        -192
+        544,
+        -720
       ],
-      "id": "1f91f74d-f369-4613-8825-ad8cef5e4fcd",
+      "id": "8c145ac9-3e0d-42b4-98cf-531e0d3652df",
       "name": "Append row in sheet",
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "A5A2uSNwdsTUUjUG",
+          "id": "B9fKWwRnLL0Dai6x",
           "name": "Google Sheets account"
         }
       }
@@ -399,10 +397,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1424,
-        -192
+        752,
+        -720
       ],
-      "id": "c1b6e326-d69f-4da0-b957-49d3680577f3",
+      "id": "3116c602-ba6f-4682-b27d-b9d1d3d70620",
       "name": "Code in JavaScript2"
     },
     {
@@ -434,14 +432,14 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1664,
-        -192
+        992,
+        -720
       ],
-      "id": "abe313ae-1cfa-4338-86f0-d116b14b3a10",
+      "id": "7bf28ec1-75f6-482c-9e0f-07630085544b",
       "name": "HTTP Request",
       "credentials": {
         "httpBasicAuth": {
-          "id": "wn5j6xNwikVeY5HO",
+          "id": "NyarFCNNvcT2EnT4",
           "name": "Unnamed credential"
         }
       }
@@ -465,10 +463,10 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.5,
       "position": [
-        2080,
-        -192
+        1408,
+        -720
       ],
-      "id": "f8849ebd-9cd1-41bd-9310-5b465e3b7f6d",
+      "id": "64dfdeac-796d-4ae7-81b3-1e5572c6ac12",
       "name": "Respond to Webhook2"
     },
     {
@@ -488,11 +486,188 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1872,
-        -192
+        1200,
+        -720
       ],
-      "id": "783a39b4-097f-4ee4-b26f-5e17108853b1",
+      "id": "a2ffa74d-83e6-4871-9251-cf88b58d9287",
       "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1396a5b9-ec87-4db6-9b75-5fd40a0f3c19",
+              "leftValue": "={{ $json.gave_up }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        720,
+        -480
+      ],
+      "id": "10748052-5a44-4c8e-98ee-646dd8745b88",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1X9V0kStLAgYrOjH2HmG3pRM9IpWAopS4bjyv82MSgH8",
+          "mode": "list",
+          "cachedResultName": "Doctor Appointments",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1X9V0kStLAgYrOjH2HmG3pRM9IpWAopS4bjyv82MSgH8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1X9V0kStLAgYrOjH2HmG3pRM9IpWAopS4bjyv82MSgH8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ new Date().toISOString() }}",
+            "Patient Name": "={{ $json.name }}",
+            "Phone Number": "={{ $json.phone }}",
+            "Appointment Date": "={{ $json.date }}",
+            "Medical Reason": "={{ $json.reason }}",
+            "Raw Transcript": "={{ $json.raw_text }}",
+            "Call SID": "={{ $json.call_sid }}",
+            "Status": "={{ $json.status }}",
+            "Booking For": "={{ $json.booking_for }}",
+            "Time Slot": "={{ $json.time_slot }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Patient Name",
+              "displayName": "Patient Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Appointment Date",
+              "displayName": "Appointment Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Medical Reason",
+              "displayName": "Medical Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Raw Transcript",
+              "displayName": "Raw Transcript",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Call SID",
+              "displayName": "Call SID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Booking For",
+              "displayName": "Booking For",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time Slot",
+              "displayName": "Time Slot",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        992,
+        -544
+      ],
+      "id": "a9436d32-c074-47be-86d5-34642bab9c20",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "B9fKWwRnLL0Dai6x",
+          "name": "Google Sheets account"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -530,7 +705,7 @@
         ],
         [
           {
-            "node": "Respond to Webhook",
+            "node": "Code in JavaScript",
             "type": "main",
             "index": 0
           }
@@ -570,7 +745,7 @@
       "main": [
         [
           {
-            "node": "Respond to Webhook1",
+            "node": "If2",
             "type": "main",
             "index": 0
           }
@@ -620,6 +795,28 @@
           }
         ]
       ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -627,11 +824,11 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "8c8d827c-a363-4edd-8e9b-af1b5a0ce3ce",
+  "versionId": "505616ae-517c-4aad-8579-4754f395a55c",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "5f9cfea5765b097dd2a9de6ff90fcd4908fc0f6c79a93c5dd7a471f7637b8129"
+    "instanceId": "e9edb4945c0a52224b8028df612666c489c6309f5aaa3da82f0c9c3084a746aa"
   },
-  "id": "NDnXKJiMPP7RDdFb",
+  "id": "iN2ZCQHKAKa9iz3t",
   "tags": []
 }
