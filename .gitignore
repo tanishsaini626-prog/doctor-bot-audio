@@ -1,0 +1,29 @@
+# ---------------------------------------------------------------------------
+# Secrets - NEVER commit these. Anything here stays on your machine only.
+# ---------------------------------------------------------------------------
+.env
+*.env
+.env.*
+doctor.env
+mongoatlas.txt
+n8n-doctor-bot-*.json
+*service-account*.json
+*service_account*.json
+*.pem
+*.key
+📋 PROJECT CONTEXT DOCTOR BOT.txt
+
+# ---------------------------------------------------------------------------
+# Node
+# ---------------------------------------------------------------------------
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# ---------------------------------------------------------------------------
+# Editor / OS
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

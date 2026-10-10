@@ -50,8 +50,8 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "api-subscription-key",
-              "value": "PASTE_YOUR_SARVAM_API_KEY"
+                  "name": "api-subscription-key",
+                  "value": "PASTE_YOUR_SARVAM_API_KEY"
             }
           ]
         },

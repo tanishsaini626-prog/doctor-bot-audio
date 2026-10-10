@@ -114,54 +114,93 @@ If1 node → all slots collected?
 ```
 doctor-bot-audio/
 │
-├── workflows/
-│   ├── doctor-appointment-bot.json     # Main call handler (Twilio entry)
-│   └── bot-gather-handle.json          # Slot extraction + booking logic
-│
+├── lib/
+│   └── bot-engine.js                   # ⭐ SOURCE OF TRUTH for all bot logic
+│                                       #    (names, dates, times, reasons, flags)
 ├── code/
-│   ├── slot-extraction.js              # Main NLP code (name/date/time/reason)
-│   ├── ask-missing-slot.js             # Multi-turn question builder
-│   └── confirmation-message.js        # Voice + WhatsApp message builder
-│
-├── audio/
-│   └── (sample call recordings)
-│
+│   ├── slot-extraction.js              # 🔧 GENERATED - paste into Code node 1
+│   ├── ask-missing-slot.js             # 🔧 GENERATED - paste into Code node 2
+│   └── confirmation-message.js         # 🔧 GENERATED - paste into Code node 3
+├── scripts/
+│   └── build-n8n-code.js               # regenerates code/*.js + the workflow JSONs
+├── tests/
+│   ├── engine.test.js                  # 28 slot-extraction edge-case tests
+│   └── n8n-nodes.test.js               # 14 tests that run the real n8n code
+│                                       #    + workflow/secret integrity checks
+├── docs/
+│   └── EDGE-CASES.md                   # every edge case and how it is handled
+├── workflows/
+│   ├── doctor-appointment-bot.json     # Greeting workflow (Twilio entry)
+│   └── bot-gather-handle.json          # Slot extraction + booking logic
+├── Bot Gather Handle.json              # working copy (same as workflows/…)
+├── test_call.py                        # places a test call (credentials via env)
 └── README.md
 ```
+
+> 🔧 **Never edit `code/*.js` by hand.** Edit `lib/bot-engine.js`, then run
+> `npm run build:n8n`. That single command refreshes the three Code-node files
+> **and** injects them into both workflow JSON files.
 
 ---
 
 ## 🚀 How to Run
 
-### Prerequisites
-- n8n Cloud account
-- Twilio account with a phone number
-- Sarvam AI API key
-- Google Sheets (with service account)
+### 1. Run the tests (no n8n needed)
 
-### Setup
-
-1. **Clone the repo**
 ```bash
-git clone https://github.com/tanishsaini626-prog/doctor-bot-audio
-cd doctor-bot-audio
+node --test          # or: npm test
 ```
 
-2. **Import workflows into n8n**
-   - Go to n8n → New Workflow → Import from file
-   - Import `doctor-appointment-bot.json`
-   - Import `bot-gather-handle.json`
+Expected: **42 passing**. These tests simulate complete phone calls against the
+real generated n8n code, so they catch broken Hindi parsing before a caller does.
 
-3. **Set up credentials in n8n**
-   - Twilio: Account SID + Auth Token
-   - Sarvam AI: API Key
-   - Google Sheets: Service Account JSON
+### 2. n8n Cloud
 
-4. **Configure Twilio**
-   - Set webhook URL to `https://your-n8n.cloud/webhook/doctor-bot`
-   - Enable Voice in your Twilio number
+- Import `workflows/doctor-appointment-bot.json` and `workflows/bot-gather-handle.json`
+- Re-paste the two placeholders that were removed from git:
+  - `PASTE_YOUR_SARVAM_API_KEY` (greeting workflow → HTTP Request header)
+  - `PASTE_YOUR_GITHUB_TOKEN_HERE` (greeting workflow → Code node)
+  - `YOUR_TWILIO_ACCOUNT_SID` (gather workflow → WhatsApp HTTP Request URL)
+- Point the Twilio number's webhook to `https://<your-n8n-domain>/webhook/doctor-bot`
 
-5. **Call your number and test!**
+### 3. Prerequisites
+
+- n8n Cloud account, Twilio number, Sarvam AI key, Google Sheets service account
+
+---
+
+## 🧪 Edge Cases
+
+The bot now covers **59 documented edge cases** — silence, noise, phonetic
+mis-hearings ("shaam" → "sam"), impossible and past dates, Sundays, half-hours
+(`saadhe 4 baje`), XML-breaking names (`R&D`), corrections, wrong numbers,
+emergencies, duplicate bookings, full slots and abandoned calls.
+
+📄 Full list with explanations: **[docs/EDGE-CASES.md](docs/EDGE-CASES.md)**
+
+---
+
+## 🔐 Security
+
+This repo previously contained live secrets in tracked files. They are now
+placeholders (**rotate the old ones — they were public**):
+
+| Was leaked | Where | Now |
+|---|---|---|
+| Twilio Account SID | `test_call.py`, gather workflow | env vars / `YOUR_TWILIO_ACCOUNT_SID` |
+| Sarvam API key | greeting workflow | `PASTE_YOUR_SARVAM_API_KEY` |
+| GitHub PAT (`ghp_…`) | greeting workflow Code node | `PASTE_YOUR_GITHUB_TOKEN_HERE` |
+| MongoDB password | project context note | local file, blocked by `.gitignore` |
+
+`.gitignore` now blocks `.env`, `*.env`, `mongoatlas.txt`,
+`n8n-doctor-bot-*.json` (service account key) and the local context notes.
+`test_call.py` reads `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
+`TWILIO_FROM_NUMBER`, `TEST_TO_NUMBER`, `WEBHOOK_URL` from the environment (or a
+local `.env` / `doctor.env` file).
+
+Each push is protected by an automated check: `tests/n8n-nodes.test.js` fails if
+a Twilio SID, Sarvam key, GitHub token or Mongo URI with a password ever appears
+in the tree again.
 
 ---
 
@@ -186,6 +225,9 @@ cd doctor-bot-audio
 | Week 3 | Sarvam AI STT integration + transcript logging |
 | Week 4 | Full slot extraction NLP + third party bookings + time slots |
 | Week 5 | Personalized voice confirmation + WhatsApp notifications |
+| Week 6 | Wrong-number handling, corrections, partial save on give-up |
+| Week 7 | Live call working end to end |
+| Week 8 | Edge-case hardening: 59 cases, 42 automated tests, secret cleanup, reusable engine |
 
 ---
 

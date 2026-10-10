@@ -1,0 +1,12 @@
+{
+  "name": "doctor-bot-audio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MediBot - Hindi/Hinglish AI voice appointment bot (n8n + Twilio + Sarvam)",
+  "scripts": {
+    "build:n8n": "node scripts/build-n8n-code.js",
+    "pretest": "node scripts/build-n8n-code.js",
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
