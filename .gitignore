@@ -4,6 +4,7 @@
 .env
 *.env
 .env.*
+!.env.example
 doctor.env
 mongoatlas.txt
 n8n-doctor-bot-*.json
