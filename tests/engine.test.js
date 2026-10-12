@@ -207,12 +207,36 @@ test('Twilio URL parameters are XML-escaped', () => {
   assert.equal(url.includes('actionOnEmptyResult="true"'), true);
 });
 
+test('confirm intent: earliest word wins, Hindi and Hinglish', () => {
+  assert.equal(E.detectConfirm('haan sahi hai'), 'yes');
+  assert.equal(E.detectConfirm('nahi theek hai'), 'no');       // no comes first
+  assert.equal(E.detectConfirm('theek hai nahi'), 'yes');      // position rule: yes first
+  assert.equal(E.detectConfirm('haan'), 'yes');
+  assert.equal(E.detectConfirm('nahin'), 'no');
+  assert.equal(E.detectConfirm('bilkul correct'), 'yes');
+  assert.equal(E.detectConfirm('सही है'), 'yes');
+  assert.equal(E.detectConfirm('नहीं गलत'), 'no');
+  assert.equal(E.detectConfirm('cancel kar do'), 'no');
+  assert.equal(E.detectConfirm('kal subah 10 baje'), null);    // not an answer at all
+  assert.equal(E.detectConfirm(''), null);
+});
+
+test('day-of-week helper for the doctor-hours check', () => {
+  assert.equal(E.dayOfWeekFromDate('22/06/2026'), 1);          // Monday
+  assert.equal(E.dayOfWeekFromDate('28/06/2026'), 0);          // Sunday
+  assert.equal(E.dayOfWeekFromDate('garbage'), null);
+});
+
+test('HINTS includes the doctor-off day message', () => {
+  assert.match(E.HINTS.doctor_off, /उपलब्ध नहीं/);
+});
+
 test('every question has three phrasings and the hint map is complete', () => {
   for (const field of ['name', 'date', 'time_slot', 'reason']) {
     assert.equal(E.QUESTIONS[field].length, 3);
     assert.equal(typeof E.questionFor(field, 2), 'string');
   }
-  for (const hint of ['past_date', 'closed_day', 'invalid_date', 'too_far', 'out_of_hours', 'invalid_time', 'slot_full', 'already_booked']) {
+  for (const hint of ['past_date', 'closed_day', 'invalid_date', 'too_far', 'out_of_hours', 'invalid_time', 'slot_full', 'already_booked', 'doctor_off']) {
     assert.equal(typeof E.HINTS[hint], 'string');
   }
 });
